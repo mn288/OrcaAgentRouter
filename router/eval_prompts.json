@@ -1,0 +1,10 @@
+[
+  {"id":"explain-fn","expect":"easy","en":"Explain this function","fr":"Explique cette fonction"},
+  {"id":"race-api","expect":"hard","en":"Fix the race condition without changing the API","fr":"Corrige la condition de concurrence sans modifier l'API"},
+  {"id":"greeting","expect":"trivial","en":"Hi, are you there?","fr":"Salut, tu es là ?"},
+  {"id":"rename-var","expect":"trivial","en":"Rename the variable `count` to `total` in this file","fr":"Renomme la variable `count` en `total` dans ce fichier"},
+  {"id":"migrate-db","expect":"hard","en":"Design a zero-downtime migration that splits the users table into accounts and profiles, keeping foreign keys valid","fr":"Conçois une migration sans interruption qui scinde la table users en accounts et profiles, en gardant les clés étrangères valides"},
+  {"id":"unit-test","expect":"moderate","en":"Write unit tests for the parser, covering empty input and malformed headers","fr":"Écris des tests unitaires pour le parseur, en couvrant l'entrée vide et les en-têtes malformés"},
+  {"id":"tools-search","expect":"moderate","tools":true,"en":"Find the latest stable version of sherpa-onnx on GitHub and update our build pin","fr":"Trouve la dernière version stable de sherpa-onnx sur GitHub et mets à jour notre épingle de build"},
+  {"id":"negation","expect":"moderate","en":"Do not refactor; only add logging around the retry loop","fr":"Ne refactorise pas ; ajoute seulement des logs autour de la boucle de retry"}
+]

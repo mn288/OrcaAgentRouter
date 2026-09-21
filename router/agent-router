@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Thin shim so the ORCA panel and shells can call the router by name.
+set -euo pipefail
+exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/cli.py" "$@"

@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+router/routes.json
+.DS_Store

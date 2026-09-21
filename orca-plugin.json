@@ -1,0 +1,74 @@
+{
+  "manifestVersion": 1,
+  "id": "agent-router",
+  "publisher": "mn288",
+  "name": "Agent Router",
+  "version": "0.1.0",
+  "description": "Grade a prompt with a decision classifier, review the proposed coding harness and model, then launch it through ORCA after approval. Works with Jev or LAYA.",
+  "author": {
+    "name": "mn288"
+  },
+  "engines": {
+    "orca": ">=1.4.200"
+  },
+  "pluginApi": 1,
+  "main": "worker/main.mjs",
+  "contributes": {
+    "panels": [
+      {
+        "id": "router",
+        "title": "Agent Router",
+        "icon": "route",
+        "entry": "panel/index.html"
+      }
+    ],
+    "commands": [
+      {
+        "id": "check-classifiers",
+        "title": "Agent Router: Check classifiers"
+      },
+      {
+        "id": "routing-summary",
+        "title": "Agent Router: Show routing log summary"
+      },
+      {
+        "id": "toggle-router-sidebar",
+        "title": "Agent Router: Toggle right sidebar",
+        "context": "global",
+        "action": "sidebar.right.toggle"
+      }
+    ],
+    "events": [
+      {
+        "on": "agent.status.changed"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "toggle-router-sidebar",
+        "key": "Mod+Alt+R",
+        "when": "global"
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "kind": "workspace:read"
+    },
+    {
+      "kind": "terminal:send"
+    },
+    {
+      "kind": "notifications:show"
+    },
+    {
+      "kind": "storage"
+    },
+    {
+      "kind": "settings:own"
+    },
+    {
+      "kind": "events:subscribe"
+    }
+  ]
+}

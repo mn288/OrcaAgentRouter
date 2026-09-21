@@ -1,0 +1,8 @@
+[
+  {"id":"fast","label":"Claude Code · Haiku","harness":"claude","provider":"anthropic","model":"haiku","levels":["trivial","easy"],"local":false,"tools":true},
+  {"id":"standard","label":"Claude Code · Sonnet","harness":"claude","provider":"anthropic","model":"sonnet","levels":["moderate"],"local":false,"tools":true},
+  {"id":"complex","label":"Claude Code · Opus","harness":"claude","provider":"anthropic","model":"opus","levels":["hard"],"local":false,"tools":true},
+  {"id":"codex","label":"Codex · gpt-5-codex","harness":"codex","provider":"openai","model":"gpt-5-codex","levels":["easy","moderate"],"domains":["code","data_analysis"],"local":false,"tools":true},
+  {"id":"opencode","label":"OpenCode · pick your model","harness":"opencode","provider":"openai","model":"REPLACE/WITH-YOUR-MODEL","levels":["easy","moderate"],"local":false,"tools":true},
+  {"id":"local","label":"Goose · your own local model","harness":"goose","provider":"openai","model":"REPLACE-WITH-YOUR-MODEL","levels":["trivial","easy","moderate"],"local":true,"tools":true}
+]
