@@ -1,4 +1,9 @@
-#!/usr/bin/env bash
-# Thin shim so the ORCA panel and shells can call the router by name.
-set -euo pipefail
-exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/cli.py" "$@"
+#!/usr/bin/env python3
+"""Resolve the portable CLI beside this script, including when symlinked on PATH."""
+from pathlib import Path
+import runpy
+import sys
+
+directory = Path(__file__).resolve().parent
+sys.path.insert(0, str(directory))
+runpy.run_path(str(directory / "cli.py"), run_name="__main__")
