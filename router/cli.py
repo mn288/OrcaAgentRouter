@@ -9,11 +9,14 @@
 
 import argparse
 import base64
+import getpass
 import json
 import os
 import shutil
 import sys
+import warnings
 
+from credentials import remove_jev_key, save_jev_key
 from launcher import LaunchError, launch, record
 from providers import Classifier, ProviderError
 from routing import HARNESSES, Router, load_routes
@@ -130,11 +133,39 @@ def cmd_health(args):
     status = 0
     for backend in ([args.backend] if args.backend else ["laya", "jev"]):
         try:
-            print(json.dumps(classifier.health(backend)))
+            if args.probe and backend == "jev":
+                prediction = classifier.predict("jev", "Explain what a Python list is.", "en")
+                print(json.dumps({"backend": "jev", "model": prediction["model"],
+                                  "note": "connection verified with a sample classification; no agent launched"}))
+            else:
+                print(json.dumps(classifier.health(backend)))
         except (ProviderError, ValueError) as exc:
             print(json.dumps({"backend": backend, "error": str(exc)}))
             status = 1 if args.backend else status
     return status
+
+
+def cmd_configure(args):
+    if args.remove:
+        remove_jev_key()
+        print("Saved Jev key removed. TYPESAFE_API_KEY, if set in your shell, still takes precedence.")
+        return 0
+    if not sys.stdin.isatty():
+        raise ValueError("Connect Jev from an interactive shell terminal; the key is entered without echo")
+    print("Connect Jev — paste your API key below. Input is hidden.")
+    # Refuse getpass's echoing fallback when the terminal cannot hide input.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", getpass.GetPassWarning)
+        try:
+            key = getpass.getpass("Jev API key: ")
+        except (getpass.GetPassWarning, EOFError) as exc:
+            raise ValueError("Could not read a hidden key; use an interactive shell terminal") from exc
+    save_jev_key(key)
+    print("Jev key saved in an owner-only file outside this repository.")
+    if os.environ.get("TYPESAFE_API_KEY"):
+        print("Note: TYPESAFE_API_KEY is set and takes precedence over the saved key.")
+    print("Next: agent-router health --backend jev --probe (one sample API call; no agent launch).")
+    return 0
 
 
 def build_parser():
@@ -158,7 +189,12 @@ def build_parser():
     route.set_defaults(func=cmd_route)
     health = sub.add_parser("health", help="classifier reachability, no prompt sent")
     health.add_argument("--backend", choices=("laya", "jev"))
+    health.add_argument("--probe", action="store_true", help="verify Jev with one sample API call (may incur a charge)")
     health.set_defaults(func=cmd_health)
+    configure = sub.add_parser("configure", help="save or remove a classifier connection")
+    configure.add_argument("backend", choices=("jev",))
+    configure.add_argument("--remove", action="store_true", help="remove the saved Jev key")
+    configure.set_defaults(func=cmd_configure)
     return parser
 
 
@@ -178,6 +214,9 @@ def main(argv=None):
     except KeyboardInterrupt:
         print("\nNothing launched.", file=sys.stderr)
         return 130
+    except OSError:
+        print("error: could not access local router files; check their permissions", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

@@ -30,10 +30,19 @@
   .status.error { border-color: var(--destructive, #b00020); }
   details { margin-top: 12px; color: var(--muted-foreground, #666); }
   code { font-family: ui-monospace, monospace; font-size: 12px; }
+  .connection { margin-top: 12px; padding: 10px; border: 1px solid var(--border, #ddd); border-radius: 8px; }
+  .connection summary { color: var(--foreground, #111); font-weight: 600; cursor: pointer; }
+  .connection p { margin: 8px 0; font-size: 12px; }
+  .connection .row > * { flex: 1 1 auto; }
+  button:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; }
 </style>
 
 <h1>Agent Router</h1>
 <p class="lede">Grades the prompt with LAYA or Jev, proposes a harness and model, and launches only after you approve in the terminal.</p>
+
+<label>Shell terminal <button id="refresh" type="button" style="float:right">Refresh</button></label>
+<div class="meter" id="context">Open a shell terminal in this workspace, then Refresh.</div>
+<ul class="terminals" id="terminals"><li><em>Select a shell, not a terminal already running an agent.</em></li></ul>
 
 <label for="prompt">Prompt</label>
 <textarea id="prompt" placeholder="Corrige la condition de concurrence sans modifier l'API"></textarea>
@@ -57,6 +66,17 @@
   </div>
 </div>
 
+<details class="connection" open>
+  <summary>Classifier connection</summary>
+  <p id="connectionHelp">Choose a shell above. Connect Jev opens a hidden API-key prompt in that terminal; the key never goes through this panel.</p>
+  <div class="row">
+    <button id="connectJev" type="button" disabled>Connect Jev</button>
+    <button id="testConnection" type="button" disabled>Test connection</button>
+    <button id="removeJev" type="button" disabled>Remove saved key</button>
+  </div>
+  <p>Results appear in the selected terminal. Testing Jev sends one fixed sample to TypeSafe and may incur a charge. No agent is launched.</p>
+</details>
+
 <label>Harnesses allowed</label>
 <div class="checks" id="harnesses">
   <label><input type="checkbox" value="claude" checked> claude</label>
@@ -72,15 +92,11 @@
 <label for="command">Router command</label>
 <input type="text" id="command" value="agent-router" spellcheck="false">
 
-<label>Terminal to type into <button id="refresh" type="button" style="float:right">Refresh</button></label>
-<div class="meter" id="context">No worktree context yet.</div>
-<ul class="terminals" id="terminals"><li><em>Press Refresh to list the focused worktree's terminals.</em></li></ul>
-
 <div class="row" style="margin-top:14px">
   <button class="primary" id="send" type="button" disabled>Type route command into terminal</button>
 </div>
 
-<div class="status" id="status" hidden></div>
+<div class="status" id="status" role="status" aria-live="polite" hidden></div>
 
 <details>
   <summary>What happens next</summary>
@@ -93,6 +109,7 @@
 const $ = (id) => document.getElementById(id)
 const pending = new Map()
 let counter = 0
+let sending = false
 
 function call(action, params) {
   return new Promise((resolve, reject) => {
@@ -105,7 +122,12 @@ function call(action, params) {
 
 window.addEventListener('message', (event) => {
   const data = event.data
-  if (event.source !== window.parent || !data || data.type !== 'orca-panel-action-result') return
+  if (event.source !== window.parent || !data) return
+  if (data.type === 'orca-panel-ping') {
+    window.parent.postMessage({ type: 'orca-panel-pong', pingId: data.pingId }, '*')
+    return
+  }
+  if (data.type !== 'orca-panel-action-result') return
   const entry = pending.get(data.requestId)
   if (!entry) return
   pending.delete(data.requestId)
@@ -144,11 +166,18 @@ function selectedTerminal() {
 }
 
 function updateSendState() {
-  $('send').disabled = !selectedTerminal() || !$('prompt').value.trim()
+  const unavailable = sending || !selectedTerminal()
+  $('send').disabled = unavailable || !$('prompt').value.trim()
+  $('connectJev').disabled = unavailable
+  $('removeJev').disabled = unavailable
+  $('testConnection').disabled = unavailable
+  $('refresh').disabled = sending
 }
 
 async function refresh() {
   show('Reading worktree context…')
+  $('terminals').innerHTML = ''
+  updateSendState()
   try {
     const ctx = await call('workspace.readContext')
     const list = $('terminals')
@@ -159,12 +188,11 @@ async function refresh() {
     } else {
       $('context').textContent = `${ctx.displayName || 'worktree'} · ${ctx.branch || 'no branch'} · ${ctx.terminals.length} terminal(s)`
       if (!ctx.terminals.length) list.innerHTML = '<li><em>No terminals; open a shell terminal in this worktree first.</em></li>'
-      for (const [index, terminal] of ctx.terminals.entries()) {
+      for (const terminal of ctx.terminals) {
         const li = document.createElement('li')
         const label = document.createElement('label')
         const radio = document.createElement('input')
         radio.type = 'radio'; radio.name = 'terminal'; radio.value = terminal.id
-        if (index === 0) radio.checked = true
         radio.addEventListener('change', updateSendState)
         label.appendChild(radio)
         label.appendChild(document.createTextNode(terminal.id))
@@ -179,6 +207,24 @@ async function refresh() {
   updateSendState()
 }
 
+async function typeCommand(argumentsText, message, enter = true) {
+  const terminalId = selectedTerminal()
+  if (!terminalId || sending) return show('Pick a shell terminal first.', true)
+  const command = `${$('command').value.trim() || 'agent-router'} ${argumentsText}`
+  if (command.length > 4096) return show('Encoded command exceeds the 4,096-character terminal bridge. Run agent-router route --prompt-file in the terminal instead.', true)
+  sending = true
+  updateSendState()
+  try {
+    const result = await call('terminal.sendText', { terminalId, text: command, enter })
+    show(result?.accepted === false ? 'ORCA did not accept the text; refresh the terminal list and try again.' : message)
+  } catch (error) {
+    show(`Send failed: ${error.message}`, true)
+  } finally {
+    sending = false
+    updateSendState()
+  }
+}
+
 async function send() {
   const prompt = $('prompt').value.replace(/\r\n/g, '\n').trim()
   const backend = $('backend').value
@@ -188,26 +234,23 @@ async function send() {
   if (backend === 'laya' && utf8Bytes(prompt) > 1000) return show('LAYA accepts up to 1,000 UTF-8 bytes. Shorten the prompt or select Jev.', true)
   const payload = { prompt, backend, language: $('language').value, local_only: $('localOnly').checked }
   if (harnesses.length < 4) payload.allowed_harnesses = harnesses
-  const command = `${$('command').value.trim() || 'agent-router'} route --b64 ${base64url(JSON.stringify(payload))}`
-  if (command.length > 4096) return show('Encoded command exceeds the 4,096-character terminal bridge. Run agent-router route --prompt-file in the terminal instead.', true)
-  const terminalId = selectedTerminal()
-  if (!terminalId) return show('Pick a terminal first.', true)
-  $('send').disabled = true
-  try {
-    const result = await call('terminal.sendText', { terminalId, text: command, enter: $('enter').checked })
-    show(result && result.accepted === false
-      ? 'ORCA did not accept the text; is that terminal still open?'
-      : `Typed the route command into ${terminalId}. Review the proposal there and confirm the launch.`)
-  } catch (error) {
-    show(`Send failed: ${error.message}`, true)
-  } finally {
-    updateSendState()
-  }
+  await typeCommand(`route --b64 ${base64url(JSON.stringify(payload))}`,
+    'Route command sent. Review the proposal in your shell; Enter accepts the recommendation, a number overrides it, q cancels.', $('enter').checked)
 }
 
 $('prompt').addEventListener('input', () => { updateMeter(); updateSendState() })
 $('backend').addEventListener('change', updateMeter)
 $('refresh').addEventListener('click', refresh)
 $('send').addEventListener('click', send)
+$('connectJev').addEventListener('click', () => {
+  $('backend').value = 'jev'
+  updateMeter()
+  typeCommand('configure jev', 'Paste your Jev API key at the hidden prompt in the selected shell, then press Enter. Wait for “Jev key saved” before testing the connection.')
+})
+$('testConnection').addEventListener('click', () => typeCommand(
+  `health --backend ${$('backend').value} --probe`, 'Connection test started. Read the result in the selected shell; no agent is launched.'))
+$('removeJev').addEventListener('click', () => {
+  typeCommand('configure jev --remove', 'Removal command sent. Shell environment keys remain configured; read the result in the selected shell.')
+})
 updateMeter()
 </script>

@@ -11,6 +11,8 @@ import os
 import urllib.error
 import urllib.request
 
+from credentials import read_jev_key
+
 RUBRIC = "laya-router-v1"
 LEVELS = ("trivial", "easy", "moderate", "hard")
 DOMAINS = ("code", "math_or_logic", "writing", "factual_lookup", "data_analysis", "chitchat")
@@ -159,9 +161,9 @@ class Classifier:
             model = routing.get("model", "unknown") if isinstance(routing, dict) else "unknown"
             model = f"laya/{model}"
         elif backend == "jev":
-            token = os.environ.get("TYPESAFE_API_KEY")
+            token = read_jev_key()
             if not token:
-                raise ProviderError("Jev needs TYPESAFE_API_KEY on the routing host")
+                raise ProviderError("Connect Jev with agent-router configure jev, or set TYPESAFE_API_KEY")
             result = self.request(
                 JEV_URL,
                 {"model": os.environ.get("JEV_MODEL", "jev-1.13.0"),
@@ -182,7 +184,7 @@ class Classifier:
                 raise ProviderError("LAYA is not ready")
             return {"backend": "laya", "model": body.get("model"), "loaded": body.get("loaded")}
         if backend == "jev":
-            if not os.environ.get("TYPESAFE_API_KEY"):
-                raise ProviderError("Jev needs TYPESAFE_API_KEY on the routing host")
+            if not read_jev_key():
+                raise ProviderError("Connect Jev with agent-router configure jev, or set TYPESAFE_API_KEY")
             return {"backend": "jev", "model": os.environ.get("JEV_MODEL", "jev-1.13.0"), "note": "credentials present; not probed"}
         raise ValueError("backend must be laya or jev")

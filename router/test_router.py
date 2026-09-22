@@ -107,7 +107,7 @@ class ClassifierTests(unittest.TestCase):
 
     def test_jev_without_key_fails_before_any_call(self):
         request = fake_request()
-        with mock.patch.dict(os.environ, {}, clear=True):
+        with mock.patch.dict(os.environ, {}, clear=True), mock.patch("providers.read_jev_key", return_value=None):
             with self.assertRaises(providers.ProviderError):
                 providers.Classifier(request).predict("jev", "hi", "auto")
         self.assertEqual(request.calls, [])

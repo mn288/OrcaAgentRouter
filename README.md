@@ -32,18 +32,32 @@ else needs to exist.
 
 ## Install
 
+The screenshots below show **ORCA 1.4.206 on macOS** with Agent Router 0.1.0.
+The plugin requires ORCA 1.4.200 or newer. If you already installed it, skip to
+[Use](#use).
+
+### 1. Prepare the CLI and classifier
+
+Clone or download this repository, then open a terminal in its root folder
+(the folder containing `orca-plugin.json`). Run:
+
 ```sh
-# 1. put the CLI on your PATH (the router/ folder is self-contained and portable)
+# Put the CLI on your PATH (the router/ folder is self-contained and portable)
 ln -s "$PWD/router/agent-router" /opt/homebrew/bin/agent-router    # or ~/.local/bin
 cp router/routes.example.json router/routes.json                   # then edit it
 
-# 2. point it at a classifier — pick one
+# Point it at a classifier — pick one
 export TYPESAFE_API_KEY=…            # Jev, hosted
 export LAYA_URL=http://127.0.0.1:8091   # LAYA, yours (this is also the default)
 
-# 3. check it
+# Check it
 agent-router health
 ```
+
+Use an existing directory on your `PATH` for the symlink. Edit
+`router/routes.json` to name the harnesses and models you can actually run; see
+[Routes](#routes). Replace the API-key placeholder if you choose Jev, or start
+your LAYA endpoint if you choose LAYA.
 
 Put the exports in the profile your ORCA terminals start with, normally
 `~/.zshrc`, or the panel will hand the command to a shell that cannot see them.
@@ -51,12 +65,56 @@ Put the exports in the profile your ORCA terminals start with, normally
 Do not symlink at a copy inside ORCA's installed plugin directory: that path is
 content-hashed and changes on every update. Link at this folder.
 
-**Then install the plugin.** In ORCA: Settings → Plugins → Development plugins,
-and select *this folder*, the one holding `orca-plugin.json`. Review the consent
-dialog; it lists six capabilities, including permission to type into a terminal
-you can see, which is how the panel hands your prompt to the CLI. ORCA copies
-and hashes the folder, so use the plugin's Refresh action after editing files.
-Requires ORCA 1.4.200 or newer.
+### 2. Open ORCA's Plugins settings
+
+Open **Settings** (the gear at the bottom left, or **⌘,** on macOS). Search
+settings for **Plugins**, then select **Plugins** under **Experimental**.
+Turn on **Plugin system** if it is off.
+
+![ORCA Plugins settings with the Plugin system switch enabled and Development collapsed](docs/screenshots/01-plugins-settings.png)
+
+### 3. Add the local plugin folder
+
+Expand **Development** at the bottom of the Plugins page. Paste the absolute
+path to this repository into **Development plugin folder path**, then click
+**Add path**. Run `pwd` from the repository root to get that path. Choose the
+folder containing `orca-plugin.json`, not its `router/` or `panel/` subfolder.
+
+The screenshot shows the repository path after it has been added; use your own
+checkout's path.
+
+![Expanded Development section showing the registered repository folder, folder path field, and Add path button](docs/screenshots/02-development.png)
+
+### 4. Find Agent Router and review permissions
+
+Select the **Installed** tab. Find **Agent Router**, published by **mn288**, with
+the **Dev** badge. A new installation shows **Needs review**. Click its
+**Review & enable** button.
+
+![Installed plugins with the Agent Router card marked Needs review and its Review and enable button](docs/screenshots/03-installed.png)
+
+The consent dialog lists six capabilities: workspace access, terminal input,
+notifications, storage, the plugin's own settings, and event subscriptions.
+Terminal input lets the panel type the router command into the terminal you
+select. Review the list, then click **Enable plugin**. On this version of ORCA,
+the plugin's **⌘⌥R** shortcut replaces **Rename worktree**; the dialog shows
+that conflict before you enable it.
+
+![Agent Router permission review dialog listing its requested capabilities](docs/screenshots/04-permissions.png)
+
+This capture is from an existing installation awaiting another review, so it
+also shows a notice about changes since the previous approval.
+
+### 5. Open the panel
+
+Return **Back to app**, select your project workspace, and open the right
+sidebar with **⌘⌥R** on macOS (`Mod+Alt+R`). Select **Agent Router** in the
+sidebar. Follow [Use](#use) to choose a shell terminal and submit your first
+prompt.
+
+ORCA copies and hashes the plugin folder. After editing plugin files, refresh
+the plugin in Settings → Plugins and review it again if ORCA shows
+**Needs review**.
 
 `publisher` and `id` in `orca-plugin.json` form the install identity. Change
 them before sharing widely, and do it before anyone installs: a rename makes it
